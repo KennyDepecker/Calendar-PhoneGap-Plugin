@@ -712,7 +712,7 @@ public class Calendar extends CordovaPlugin {
           JSONArray result = new JSONArray();
           long input_event_id = jsonFilter.optLong("event_id");
           ContentResolver cr = Calendar.this.cordova.getActivity().getContentResolver();
-          String[] l_projection = new String[]{"_id", "attendeeName", "attendeeEmail", "attendeeStatus"};
+          String[] l_projection = new String[]{"_id", "event_id", "attendeeName", "attendeeEmail", "attendeeStatus", "attendeeRelationship", "attendeeType", "attendeeIdentity", "attendeeIdNamespace", "attendee_contact_id"};
 
           Cursor cursor = Attendees.query(cr, input_event_id, l_projection);
           int i = 0;
@@ -722,10 +722,16 @@ public class Calendar extends CordovaPlugin {
                 result.put(
                   i++,
                   new JSONObject()
-                    .put("attendeeName", cursor.getString(cursor.getColumnIndex("attendeeName")))
                     .put("id", cursor.getString(cursor.getColumnIndex("_id")))
+                    .put("event_id", cursor.getString(cursor.getColumnIndex("event_id")))
+                    .put("attendeeName", cursor.getString(cursor.getColumnIndex("attendeeName")))
                     .put("attendeeEmail", cursor.getString(cursor.getColumnIndex("attendeeEmail")))
                     .put("attendeeStatus", cursor.getString(cursor.getColumnIndex("attendeeStatus")))
+                    .put("attendeeRelationship", cursor.getString(cursor.getColumnIndex("attendeeRelationship")))
+                    .put("attendeeType", cursor.getString(cursor.getColumnIndex("attendeeType")))
+                    .put("attendeeIdentity", cursor.getString(cursor.getColumnIndex("attendeeIdentity")))
+                    .put("attendeeIdNamespace", cursor.getString(cursor.getColumnIndex("attendeeIdNamespace")))
+                    .put("attendee_contact_id", cursor.getString(cursor.getColumnIndex("attendee_contact_id")))
                 );
               } catch (JSONException e) {
                 e.printStackTrace();
