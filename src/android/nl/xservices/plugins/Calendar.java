@@ -28,6 +28,7 @@ import java.util.TimeZone;
 import java.text.SimpleDateFormat;
 
 import static android.provider.CalendarContract.Events;
+import static android.provider.CalendarContract.Attendees;
 
 public class Calendar extends CordovaPlugin {
   private static final String HAS_READ_PERMISSION = "hasReadPermission";
@@ -46,6 +47,7 @@ public class Calendar extends CordovaPlugin {
   private static final String ACTION_DELETE_EVENT_BY_ID = "deleteEventById";
   private static final String ACTION_FIND_EVENT_WITH_OPTIONS = "findEventWithOptions";
   private static final String ACTION_LIST_EVENTS_IN_RANGE = "listEventsInRange";
+  private static final String ACTION_LIST_EVENT_ATTENDEES = "listEventAttendees";
   private static final String ACTION_LIST_CALENDARS = "listCalendars";
   private static final String ACTION_CREATE_CALENDAR = "createCalendar";
   private static final String ACTION_DELETE_CALENDAR = "deleteCalendar";
@@ -61,6 +63,7 @@ public class Calendar extends CordovaPlugin {
   private static final int PERMISSION_REQCODE_FIND_EVENTS = 200;
   private static final int PERMISSION_REQCODE_LIST_CALENDARS = 201;
   private static final int PERMISSION_REQCODE_LIST_EVENTS_IN_RANGE = 202;
+  private static final int PERMISSION_REQCODE_LIST_EVENT_ATTENDEES = 203;
 
   private static final Integer RESULT_CODE_CREATE = 0;
   private static final Integer RESULT_CODE_OPENCAL = 1;
@@ -96,6 +99,9 @@ public class Calendar extends CordovaPlugin {
       return true;
     } else if (ACTION_LIST_EVENTS_IN_RANGE.equals(action)) {
       listEventsInRange(args);
+      return true;
+    } else if (ACTION_LIST_EVENT_ATTENDEES.equals(action)) {
+      listEventAttendees(args);
       return true;
     } else if (!hasLimitedSupport && ACTION_FIND_EVENT_WITH_OPTIONS.equals(action)) {
       findEvents(args);
@@ -208,6 +214,8 @@ public class Calendar extends CordovaPlugin {
       listCalendars();
     } else if (requestCode == PERMISSION_REQCODE_LIST_EVENTS_IN_RANGE) {
       listEventsInRange(requestArgs);
+    } else if (requestCode == PERMISSION_REQCODE_LIST_EVENT_ATTENDEES) {
+      listEventAttendees(requestArgs);
     }
   }
 
@@ -637,7 +645,7 @@ public class Calendar extends CordovaPlugin {
           calendar_end.setTime(date_end);
 
           //projection of DB columns
-          String[] l_projection = new String[]{"calendar_id", "title", "begin", "end", "eventLocation", "allDay", "_id", "rrule", "rdate", "exdate", "event_id"};
+          String[] l_projection = new String[]{"calendar_id", "title", "begin", "end", "eventLocation", "allDay", "_id", "rrule", "rdate", "exdate", "event_id", "description"};
 
           //actual query
           Cursor cursor = contentResolver.query(
@@ -668,6 +676,7 @@ public class Calendar extends CordovaPlugin {
                                 .put("rdate", cursor.getString(cursor.getColumnIndex("rdate")))
                                 .put("exdate", cursor.getString(cursor.getColumnIndex("exdate")))
                                 .put("title", cursor.getString(cursor.getColumnIndex("title")))
+                                .put("description", cursor.getString(cursor.getColumnIndex("description")))
                                 .put("dtstart", cursor.getLong(cursor.getColumnIndex("begin")))
                                 .put("dtend", cursor.getLong(cursor.getColumnIndex("end")))
                                 .put("eventLocation", cursor.getString(cursor.getColumnIndex("eventLocation")) != null ? cursor.getString(cursor.getColumnIndex("eventLocation")) : "")
@@ -687,6 +696,50 @@ public class Calendar extends CordovaPlugin {
       System.err.println("Exception: " + e.getMessage());
       callback.error(e.getMessage());
     }
+  }
+
+  private void listEventAttendees(JSONArray args) {
+    if (!calendarPermissionGranted(Manifest.permission.READ_CALENDAR)) {
+      requestReadPermission(PERMISSION_REQCODE_LIST_EVENT_ATTENDEES);
+      return;
+    }
+    try {
+      cordova.getThreadPool().execute(new Runnable() {
+        @Override
+        public void run() {
+          JSONArray result = new JSONArray();
+          final JSONObject jsonFilter = args.getJSONObject(0);
+          long input_event_id = jsonFilter.optLong("event_id");
+          ContentResolver cr = getContentResolver();
+          String[] l_projection = new String[]{"_id", "attendeeName", "attendeeEmail", "attendeeStatus"};
+
+          Cursor cursor = Attendees.query(cr, input_event_id, l_projection);
+          int i = 0;
+          if (cursor != null) {
+            while (cursor.moveToNext()) {
+              try {
+                result.put(
+                  i++,
+                  new JSONObject()
+                    .put("attendeeName", cursor.getString(cursor.getColumnIndex("attendeeName")))
+                    .put("id", cursor.getString(cursor.getColumnIndex("_id")))
+                    .put("attendeeEmail", cursor.getString(cursor.getColumnIndex("attendeeEmail")))
+                    .put("attendeeStatus", cursor.getString(cursor.getColumnIndex("attendeeStatus")))
+                );
+              } catch (JSONException e) {
+                e.printStackTrace();
+              }
+            }
+            cursor.close();
+          }
+          callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
+        }
+      });
+    } catch (JSONException e) {
+      System.err.println("Exception: " + e.getMessage());
+      callback.error(e.getMessage());
+    }
+
   }
 
   public void onActivityResult(int requestCode, int resultCode, Intent data) {
