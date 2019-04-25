@@ -704,13 +704,14 @@ public class Calendar extends CordovaPlugin {
       return;
     }
     try {
+      final JSONObject jsonFilter = args.getJSONObject(0);
+
       cordova.getThreadPool().execute(new Runnable() {
         @Override
         public void run() {
           JSONArray result = new JSONArray();
-          final JSONObject jsonFilter = args.getJSONObject(0);
           long input_event_id = jsonFilter.optLong("event_id");
-          ContentResolver cr = getContentResolver();
+          ContentResolver cr = Calendar.this.cordova.getActivity().getContentResolver();
           String[] l_projection = new String[]{"_id", "attendeeName", "attendeeEmail", "attendeeStatus"};
 
           Cursor cursor = Attendees.query(cr, input_event_id, l_projection);
