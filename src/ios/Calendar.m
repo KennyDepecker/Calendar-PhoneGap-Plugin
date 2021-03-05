@@ -526,7 +526,7 @@
       pluginResult = [CDVPluginResult resultWithStatus: CDVCommandStatus_OK messageAsArray:eventsDataArray];
 
       [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-  }];  
+  }];
 }
 
 - (void)createEventWithOptions:(CDVInvokedUrlCommand*)command {
@@ -1057,5 +1057,28 @@
     return (self.eventStore != nil) ? CDVCommandStatus_OK : CDVCommandStatus_ERROR;
 }
 
+- (void)listEventAttendees:(CDVInvokedUrlCommand*)command {
+    NSDictionary* options = [command.arguments objectAtIndex:0];
+    NSString* event_id = [options objectForKey:@"event_id"];
+    NSMutableArray* attendees = [[NSMutableArray alloc] init];
+    EKCalendarItem* theEvent = nil;
+    CDVPluginResult* pluginResult = nil;
 
+    theEvent = [self.eventStore calendarItemWithIdentifier:event_id];
+    NSLog(@"event: %@", theEvent.attendees);
+    for (EKParticipant* participant in theEvent.attendees) {
+        NSString *status = [[NSArray arrayWithObjects:@"1", @"4", @"3", @"2", @"4", @"2", @"3", @"3", nil] objectAtIndex:participant.participantStatus];
+        NSMutableDictionary* attendeeEntry = [[NSMutableDictionary alloc] init];
+        NSString* email = [participant.URL absoluteString];
+        email = [email stringByReplacingOccurrencesOfString:@"mailto:" withString:@""];
+        [attendeeEntry setObject:participant.name forKey:@"attendeeName"];
+        [attendeeEntry setObject:email forKey:@"attendeeEmail"];
+        [attendeeEntry setObject:status forKey:@"attendeeStatus"];
+        [attendeeEntry setObject:event_id forKey:@"event_id"];
+        [attendees addObject:attendeeEntry];
+    }
+
+    pluginResult = [CDVPluginResult resultWithStatus: CDVCommandStatus_OK messageAsArray:attendees];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
 @end
